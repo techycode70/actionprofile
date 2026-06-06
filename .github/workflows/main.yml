@@ -32,13 +32,6 @@ jobs:
           java-version: 17
           cache: maven
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-
-
       - name: Maven Build
         run: mvn -B clean install
 
@@ -47,10 +40,6 @@ jobs:
         with:
           name: vprofile-app
           path: target/*.war
-
-      - name: Notify if Build Fails
-        if: failure()
-        run: echo "🚨 Build job failed!"
 
   Testing:
     runs-on: ubuntu-latest
@@ -67,7 +56,7 @@ jobs:
           java-version: 17
           cache: maven
 
-      - name: Run tests
+      - name: Run Tests
         run: mvn test
 
       - name: Checkstyle
@@ -81,7 +70,7 @@ jobs:
       - name: Code checkout
         uses: actions/checkout@v4
 
-      # ✅ Install Trivy CLI (NO broken versions)
+      # Install Trivy (stable, no version issues)
       - name: Install Trivy
         run: |
           sudo apt-get update
@@ -89,11 +78,11 @@ jobs:
           wget https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh
           sh install.sh -b /usr/local/bin
 
-      # ✅ Safe scan (no Maven dependency resolution issues)
+      # ✅ FIXED: no Maven resolution, no 429 error
       - name: Run Trivy scan
-        run: trivy fs . --scanners vuln -f json -o trivy-results.json --exit-code 0
+        run: trivy fs . --scanners vuln,secret --dependency-tree=false -f json -o trivy-results.json --exit-code 0
 
-      - name: Upload scan results
+      - name: Upload Scan Results
         uses: actions/upload-artifact@v4
         with:
           name: trivy-scan-results
