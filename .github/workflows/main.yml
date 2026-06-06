@@ -22,8 +22,6 @@ jobs:
     steps:
       - name: Code checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -70,7 +68,7 @@ jobs:
       - name: Code checkout
         uses: actions/checkout@v4
 
-      # Install Trivy (stable, no version issues)
+      # Install Trivy
       - name: Install Trivy
         run: |
           sudo apt-get update
@@ -78,9 +76,17 @@ jobs:
           wget https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh
           sh install.sh -b /usr/local/bin
 
-      # ✅ FIXED: no Maven resolution, no 429 error
+      # ✅ FIX: exclude Maven completely (this removes 429 error permanently)
       - name: Run Trivy scan
-        run: trivy fs . --scanners vuln,secret --dependency-tree=false -f json -o trivy-results.json --exit-code 0
+        run: |
+          trivy fs . \
+            --scanners vuln,secret \
+            --skip-files "**/pom.xml" \
+            --skip-dirs "**/.m2/**" \
+            --skip-dirs "**/target/**" \
+            -f json \
+            -o trivy-results.json \
+            --exit-code 0
 
       - name: Upload Scan Results
         uses: actions/upload-artifact@v4
