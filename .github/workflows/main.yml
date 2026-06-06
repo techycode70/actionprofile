@@ -15,9 +15,6 @@ on:
 permissions: 
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   Build:
     runs-on: ubuntu-latest
@@ -26,12 +23,25 @@ jobs:
       - name: Code checkout
         uses: actions/checkout@v4
 
+      # ✅ FIX: Maven cache prevents 429 errors
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
           cache: maven
+
+      # ✅ FIX: Pre-download dependencies (avoids Trivy/Maven conflict)
+      - name: Download dependencies
+        run: mvn -B dependency:go-offline
 
       - name: Build with Maven
         run: mvn -B clean install
@@ -71,7 +81,7 @@ jobs:
       - name: Code checkout
         uses: actions/checkout@v4
 
-      # ✅ FIXED: Stable Trivy install (no 404 issues)
+      # ✅ Stable Trivy install
       - name: Install Trivy
         run: |
           sudo apt-get update
@@ -79,9 +89,9 @@ jobs:
           wget https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh
           sh install.sh -b /usr/local/bin
 
-      # Run scan safely (never fails pipeline)
-      - name: Run Trivy Filesystem Scan
-        run: trivy fs . -f json -o trivy-results.json --exit-code 0
+      # ✅ FIX: Avoid Maven-heavy scanning issues
+      - name: Run Trivy filesystem scan
+        run: trivy fs . --scanners vuln --format json -o trivy-results.json --exit-code 0
 
       - name: Upload Scan Results
         uses: actions/upload-artifact@v4
