@@ -12,15 +12,16 @@ on:
   schedule:
     - cron: "10 14 * * 1-5"
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions: 
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   Build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Code checkout
         uses: actions/checkout@v4
@@ -44,6 +45,7 @@ jobs:
   Testing:
     runs-on: ubuntu-latest
     needs: Build
+
     steps:
       - name: Code checkout
         uses: actions/checkout@v4
@@ -64,18 +66,21 @@ jobs:
   Security_Scan:
     runs-on: ubuntu-latest
     needs: Build
+
     steps:
       - name: Code checkout
         uses: actions/checkout@v4
 
+      # ✅ FIXED: Stable Trivy install (no 404 issues)
       - name: Install Trivy
         run: |
           sudo apt-get update
-          sudo apt-get install wget -y
-          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.deb
-          sudo dpkg -i trivy_0.50.1_Linux-64bit.deb
+          sudo apt-get install -y wget
+          wget https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh
+          sh install.sh -b /usr/local/bin
 
-      - name: Run Trivy scan (non-blocking)
+      # Run scan safely (never fails pipeline)
+      - name: Run Trivy Filesystem Scan
         run: trivy fs . -f json -o trivy-results.json --exit-code 0
 
       - name: Upload Scan Results
