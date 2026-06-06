@@ -13,11 +13,11 @@ Security_Scan:
         java-version: 17
         cache: maven
 
-    # ✅ CRITICAL FIX: Force Maven offline mode
-    - name: Download dependencies safely
-      run: mvn -B dependency:go-offline -Dmaven.repo.local=~/.m2
+    # ✅ FIX: download dependencies (prevents Maven Central 429)
+    - name: Download Maven dependencies
+      run: mvn -B dependency:go-offline
 
-    # ✅ Install Trivy
+    # Install Trivy safely
     - name: Install Trivy
       run: |
         sudo apt-get update
@@ -25,15 +25,9 @@ Security_Scan:
         wget https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh
         sh install.sh -b /usr/local/bin
 
-    # ✅ IMPORTANT FIX: skip problematic dependency resolution
-    - name: Run Trivy scan (no Maven resolution)
-      run: |
-        trivy fs . \
-          --scanners vuln \
-          --dependency-tree=false \
-          --format json \
-          -o trivy-results.json \
-          --exit-code 0
+    # ✅ FIX: correct Trivy command (no invalid flags)
+    - name: Run Trivy scan
+      run: trivy fs . --scanners vuln --format json -o trivy-results.json --exit-code 0
 
     - name: Upload results
       uses: actions/upload-artifact@v4
